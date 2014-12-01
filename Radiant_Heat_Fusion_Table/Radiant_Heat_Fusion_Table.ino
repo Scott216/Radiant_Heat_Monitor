@@ -85,7 +85,13 @@ const byte STRAND_B_PIN =  5;
 const byte STRAND_C_PIN =  6; 
 const byte STRAND_DE_PIN = 7;
 const byte GAS_PULSE_PIN = 8; // Gas meter pin
-const byte UPLOAD_LED_PIN = A0;   
+const byte UPLOAD_LED_PIN = A0;
+
+// Define Thermistor Analog pins
+#define INPUTPIN_CRAWLSPACE 3
+#define INPUTPIN_OUTSIDE    1
+#define INPUTPIN_LIVINGRM   2
+
 
 char serverName[] = "api.pushingbox.com";
 char url[] = "/pushingbox";
@@ -142,10 +148,6 @@ DallasTemperature sensors_B(&oneWire_B);
 DallasTemperature sensors_C(&oneWire_C);
 DallasTemperature sensors_D(&oneWire_D);
 
-// Define Thermistor Analog pins
-#define INPUTPIN_CRAWLSPACE 0
-#define INPUTPIN_OUTSIDE    1
-#define INPUTPIN_LIVINGRM   2
 
 // Suntec External IP 207.136.204.147:46084
 byte mac[] = { 0x46, 0x46, 0x46, 0x00, 0x00, 0x0A };
@@ -242,7 +244,9 @@ void setup()
   sensors_C.begin();
   sensors_D.begin();
   findSensors();  // Look for each sensor on the nework and print out it's status
-
+  
+  freeRam(true);
+  
 } // setup()
 
   
@@ -281,7 +285,7 @@ void loop()
   // through the loop, then stop the client:
   if ( !client.connected() && lastConnected ) 
   {
-    Serial.println(F("disconnecting...\n"));
+    Serial.println(F("\ndisconnecting...\n"));
     client.stop();
   }
   lastConnected = client.connected();
