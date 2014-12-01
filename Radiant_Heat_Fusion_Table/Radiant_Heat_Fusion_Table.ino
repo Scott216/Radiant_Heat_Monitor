@@ -59,6 +59,7 @@ of sensors.  I added code to soft reset the Arduino of the averages don't change
 
 Change Log
 11/27/14 v2.1  New PCB  - changed I/O pins for OneWire strands
+11/30/14 v2.2 Moved thermistor input from A0 to A3 because LED is using A0.  Formatting changes 
  
 */
 
@@ -88,9 +89,9 @@ const byte GAS_PULSE_PIN = 8; // Gas meter pin
 const byte UPLOAD_LED_PIN = A0;
 
 // Define Thermistor Analog pins
-#define INPUTPIN_CRAWLSPACE 3
 #define INPUTPIN_OUTSIDE    1
 #define INPUTPIN_LIVINGRM   2
+#define INPUTPIN_CRAWLSPACE 3
 
 
 char serverName[] = "api.pushingbox.com";
