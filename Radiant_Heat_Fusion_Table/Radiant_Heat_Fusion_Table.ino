@@ -1,4 +1,10 @@
 /*
+
+Boards: Uno - With IDE 1.0.x sketch locks up after during ethernet connection, but it works on IDE 1.5.8.  I think it's low on memory
+        Leonardo - won't get an IP address
+        Mega - might be my best choice. Originally I had it running on a mega
+
+
 Sketch sends data to Google Fusion Table:
 https://www.google.com/fusiontables/DataSource?docid=131lEwLkyLpsiIo956Su6OCdcepuylcs2RKxEmGo
 The date gets to the fusion table in a rather round about manner.  First it's sent
@@ -58,14 +64,14 @@ One day I noticed the Zone 2 average temp and all the senors in the right sectio
 of sensors.  I added code to soft reset the Arduino of the averages don't change at all in 2 hours 
 
 Change Log
-11/27/14 v2.1  New PCB  - changed I/O pins for OneWire strands
-11/30/14 v2.2 Moved thermistor input from A0 to A3 because LED is using A0.  Formatting changes 
- 
+11/27/14 v2.01  New PCB  - changed I/O pins for OneWire strands
+11/30/14 v2.02  Moved thermistor input from A0 to A3 because LED is using A0.  Formatting changes 
+12/04/14 v2.03  Flassh LED on Startup.  Compiled with IDE 1.5.8.  Now Uno isn't hanging anymore
 */
 
-#define VERSION "v2.1"
+#define VERSION "v2.03"
 
-
+#include "HardwareSerial.h"      // Required by IDE 1.5.x
 #include <OneWire.h>             // Reference: http://www.pjrc.com/teensy/td_libs_OneWire.html
 #include <DallasTemperature.h>   // Reference: http://milesburton.com/Main_Page?title=Dallas_Temperature_Control_Library
                                  // Reference: http://www.ay60dxg.com/doc/loguino/class_dallas_temperature.html
@@ -88,6 +94,21 @@ const byte STRAND_DE_PIN = 7;
 const byte GAS_PULSE_PIN = 8; // Gas meter pin
 const byte UPLOAD_LED_PIN = A0;
 
+/* I/O for Mega board
+// I/O Pins
+const byte STRAND_A_PIN =    35;
+const byte STRAND_B_PIN =    37;
+const byte STRAND_C_PIN =    39; 
+const byte STRAND_DE_PIN =   41;
+const byte GAS_PULSE_PIN =   33; 
+const byte LED_UPLOAD_PIN_R = 4;
+const byte LED_UPLOAD_PIN_G = 5;
+const byte LED_UPLOAD_PIN_B = 6;
+const byte OLED_RST_PIN =    46;
+
+*/
+
+
 // Define Thermistor Analog pins
 #define INPUTPIN_OUTSIDE    1
 #define INPUTPIN_LIVINGRM   2
@@ -99,7 +120,7 @@ char url[] = "/pushingbox";
 EthernetClient client; // create a client that connects to Google
 boolean lastConnected = false; // State of the connection last time through the main loop
 byte statusCode = 10;  // status code uploaded to database.  
-                      // 0 Ok; 1 - 8 Zone 2 temp not changing; 10 bootup
+                       // 0 Ok; 1 - 8 Zone 2 temp not changing; 10 bootup
 
 #define NUM_FIELDS 69  // number of fields in Google form and Fusion Table
                     
@@ -227,16 +248,23 @@ static uint8_t tempSensors[NUM_SENSORS][8] =
 void setup()
 {  
   Serial.begin(9600);
-  delay(1000);
+
+  pinMode(UPLOAD_LED_PIN, OUTPUT);
+  for (byte f = 0; f < 10; f++ )
+  {
+    digitalWrite(UPLOAD_LED_PIN, HIGH);
+    delay(150);
+    digitalWrite(UPLOAD_LED_PIN, LOW);
+    delay(150);
+  }
+
   Serial.print(F("Begin Radiant Heat Setup "));
   Serial.println(VERSION); 
-  
-  pinMode(UPLOAD_LED_PIN, OUTPUT);
   
   
   Ethernet.begin(mac, ip);
   delay(1000); // give the Ethernet shield a second to initialize
-  Serial.print(F("My IP address: "));
+  Serial.print(F("IP: "));
   Serial.println(Ethernet.localIP());
   
   // Start up the OneWire library
@@ -256,9 +284,9 @@ void loop()
   // Upload first set of data 
   if ( (long)(millis() - uploadTime) > (60000UL * 15UL) || uploadTime == 0UL)  // upload every 15 minuts
   {
+    freeRam(true);
     readTemperatures();
     temperature[HOTWATER] = statusCode; // SRG temporary put status code in the Hot Water field
-     
      
     if( client.connect(serverName, 80) )
     {    
@@ -266,6 +294,10 @@ void loop()
       lastConnectionTime = millis();
       postRequest(serverName, url); 
       uploadTime = millis();  // record upload time
+      digitalWrite(UPLOAD_LED_PIN, HIGH);
+      delay(250);
+      digitalWrite(UPLOAD_LED_PIN, LOW);
+      
     }
     else
     { 
