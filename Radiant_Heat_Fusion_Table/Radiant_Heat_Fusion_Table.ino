@@ -1,5 +1,7 @@
 /*
 
+To do: Switch back to using a Mega
+
 Boards: Uno - With IDE 1.0.x sketch locks up after during ethernet connection, but it works on IDE 1.5.8.  I think it's low on memory
         Leonardo - won't get an IP address
         Mega - might be my best choice. Originally I had it running on a mega
@@ -63,13 +65,25 @@ Issues:
 One day I noticed the Zone 2 average temp and all the senors in the right section were not changing. I've always had some problems with this group 
 of sensors.  I added code to soft reset the Arduino of the averages don't change at all in 2 hours 
 
+To Do:
+Build new PCB for Mega
+  - Try not to use I/O on short edge of the Mega
+Connect pulse meter and other temperaturs
+Add OLED screen for status updates
+Add LED for heartbeat
+Make a shild for that will go on top of the ethernet board that will hold OLED screen and LEDs.  
+  - Might not even need status LEDs if your are going to have an OLED screen
+  
+
 Change Log
-11/27/14 v2.01  New PCB  - changed I/O pins for OneWire strands
-11/30/14 v2.02  Moved thermistor input from A0 to A3 because LED is using A0.  Formatting changes 
-12/04/14 v2.03  Flassh LED on Startup.  Compiled with IDE 1.5.8.  Now Uno isn't hanging anymore
+11/27/14  v2.01  New PCB  - changed I/O pins for OneWire strands
+11/30/14  v2.02  Moved thermistor input from A0 to A3 because LED is using A0.  Formatting changes 
+12/04/14  v2.03  Flassh LED on Startup.  Compiled with IDE 1.5.8.  Now Uno isn't hanging anymore
+02/03/15  v2.04  Added heartbeat LED
+
 */
 
-#define VERSION "v2.03"
+#define VERSION "v2.04"
 
 #include "HardwareSerial.h"      // Required by IDE 1.5.x
 #include <OneWire.h>             // Reference: http://www.pjrc.com/teensy/td_libs_OneWire.html
@@ -93,6 +107,7 @@ const byte STRAND_C_PIN =  6;
 const byte STRAND_DE_PIN = 7;
 const byte GAS_PULSE_PIN = 8; // Gas meter pin
 const byte UPLOAD_LED_PIN = A0;
+const byte HEARTBEAT_LED_PIN = 3;
 
 /* I/O for Mega board
 // I/O Pins
@@ -105,6 +120,7 @@ const byte LED_UPLOAD_PIN_R = 4;
 const byte LED_UPLOAD_PIN_G = 5;
 const byte LED_UPLOAD_PIN_B = 6;
 const byte OLED_RST_PIN =    46;
+const byte HEARTBEAT_LED_PIN = ;
 
 */
 
@@ -249,11 +265,16 @@ void setup()
 {  
   Serial.begin(9600);
 
+  pinMode(HEARTBEAT_LED_PIN, OUTPUT); 
   pinMode(UPLOAD_LED_PIN, OUTPUT);
+  
+  // Flash LEDs to indicate starting up
   for (byte f = 0; f < 10; f++ )
   {
+    digitalWrite(HEARTBEAT_LED_PIN, HIGH);
     digitalWrite(UPLOAD_LED_PIN, HIGH);
     delay(150);
+    digitalWrite(HEARTBEAT_LED_PIN, LOW);
     digitalWrite(UPLOAD_LED_PIN, LOW);
     delay(150);
   }
@@ -261,9 +282,8 @@ void setup()
   Serial.print(F("Begin Radiant Heat Setup "));
   Serial.println(VERSION); 
   
-  
   Ethernet.begin(mac, ip);
-  delay(1000); // give the Ethernet shield a second to initialize
+  delay(3000); // give the Ethernet shield a second to initialize
   Serial.print(F("IP: "));
   Serial.println(Ethernet.localIP());
   
@@ -275,12 +295,21 @@ void setup()
   findSensors();  // Look for each sensor on the nework and print out it's status
   
   freeRam(true);
+  delay(400);
   
 } // setup()
 
   
 void loop()
 { 
+  // Heartbeat LED will flash every 200mS
+  static uint32_t Heartbeaet_Timer = millis();
+  if ( (long)(millis() - Heartbeaet_Timer > 200 ) )
+  {
+    digitalWrite(HEARTBEAT_LED_PIN, !digitalRead(HEARTBEAT_LED_PIN));
+    Heartbeaet_Timer = millis();
+  }
+  
   // Upload first set of data 
   if ( (long)(millis() - uploadTime) > (60000UL * 15UL) || uploadTime == 0UL)  // upload every 15 minuts
   {
@@ -297,7 +326,6 @@ void loop()
       digitalWrite(UPLOAD_LED_PIN, HIGH);
       delay(250);
       digitalWrite(UPLOAD_LED_PIN, LOW);
-      
     }
     else
     { 
